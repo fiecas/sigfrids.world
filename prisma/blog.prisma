@@ -1,8 +1,0 @@
-model Post {
-  id        String    @id @default(cuid())
-  slug      String    @unique
-  title     String
-  body      String
-  published DateTime  @default(now())
-  updated   DateTime?
-}
