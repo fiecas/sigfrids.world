@@ -1,10 +1,10 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fs};
 
 use crate::http::error::ResponseError;
 
 pub trait Route {
     fn from_path(path: &str) -> Result<impl Route, ResponseError>;
-    fn handle(&self) -> Result<(&str, HashMap<&str, &str>), ResponseError>;
+    fn handle(&self) -> Result<(String, HashMap<&str, &str>), ResponseError>;
 }
 
 #[repr(u16)]
@@ -23,9 +23,15 @@ impl Route for RootRoute {
         }
     }
 
-    fn handle(&self) -> Result<(&str, HashMap<&str, &str>), ResponseError> {
+    fn handle(&self) -> Result<(String, HashMap<&str, &str>), ResponseError> {
         match self {
-            RootRoute::Root => Ok(("root", HashMap::new())),
+            RootRoute::Root => {
+                let content = match handle_file("./templates/default.html") {
+                    Ok(content) => content,
+                    Err(error) => return Err(error),
+                };
+                Ok((content, HashMap::new()))
+            }
             RootRoute::Api(api_route) => api_route.handle(),
         }
     }
@@ -41,9 +47,13 @@ impl Route for ApiRoute {
         }
     }
 
-    fn handle(&self) -> Result<(&str, HashMap<&str, &str>), ResponseError> {
+    fn handle(&self) -> Result<(String, HashMap<&str, &str>), ResponseError> {
         match self {
             _ => Err(ResponseError::NotFound),
         }
     }
+}
+
+fn handle_file(file_path: &str) -> Result<String, ResponseError> {
+    fs::read_to_string(file_path).or(Err(ResponseError::InternalServerError))
 }

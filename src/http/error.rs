@@ -7,6 +7,7 @@ pub enum ResponseError {
     PaymentRequired,
     Forbidden,
     NotFound,
+    InternalServerError = 500,
 }
 
 impl fmt::Display for ResponseError {
@@ -17,6 +18,7 @@ impl fmt::Display for ResponseError {
             ResponseError::PaymentRequired => write!(f, "Payment Required"),
             ResponseError::Forbidden => write!(f, "Forbidden"),
             ResponseError::NotFound => write!(f, "Not Found"),
+            ResponseError::InternalServerError => write!(f, "Internal Server Error"),
         }
     }
 }

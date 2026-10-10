@@ -33,7 +33,7 @@ pub fn handle_connection(stream: TcpStream) {
         }
     };
 
-    return respond(stream, 200, content);
+    return respond(stream, 200, content.as_str());
 }
 
 fn respond(mut stream: TcpStream, code: u16, contents: &str) {
