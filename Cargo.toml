@@ -5,3 +5,4 @@ edition = "2024"
 
 [dependencies]
 markdown = "1.0.0"
+pulldown-cmark = "0.13.4"
