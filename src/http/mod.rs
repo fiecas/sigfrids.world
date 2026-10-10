@@ -6,7 +6,7 @@ use std::{
     net::TcpStream,
 };
 
-use crate::http::routing::Route;
+use crate::http::routing::{RootRoute, Route};
 
 pub fn handle_connection(stream: TcpStream) {
     let buf_reader = BufReader::new(&stream);
@@ -17,7 +17,7 @@ pub fn handle_connection(stream: TcpStream) {
         }
     };
 
-    let route = match Route::from_path(request.path.as_str()) {
+    let route = match RootRoute::from_path(request.path.as_str()) {
         Ok(route) => route,
         Err(error) => {
             let status_text = error.to_string();
