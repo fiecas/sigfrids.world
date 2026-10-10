@@ -16,7 +16,6 @@ pub enum RootRoute {
 #[allow(refining_impl_trait)]
 impl Route for RootRoute {
     fn from_path(path: &str) -> Result<RootRoute, ResponseError> {
-        println!("{}", path);
         match path {
             "/" => Ok(RootRoute::Root),
             _ => Err(ResponseError::NotFound),
@@ -40,7 +39,6 @@ impl Route for RootRoute {
 pub enum ApiRoute {}
 impl Route for ApiRoute {
     fn from_path(path: &str) -> Result<impl Route, ResponseError> {
-        println!("{}", path);
         match path {
             "/" => Ok(RootRoute::Root),
             _ => Err(ResponseError::NotFound),
