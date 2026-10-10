@@ -13,16 +13,16 @@ impl From<Error> for ResponseError {
 }
 
 pub struct Request {
-    pub method: String,
+    pub _method: String,
     pub path: String,
-    pub headers: HashMap<String, String>,
+    pub _headers: HashMap<String, String>,
 }
 
 pub fn parse(mut lines: Lines<BufReader<&TcpStream>>) -> Result<Request, ResponseError> {
     let request_line = lines.next().ok_or(ResponseError::BadRequest)??;
 
     let mut request_line_split = request_line.split(" ");
-    let method = request_line_split
+    let _method = request_line_split
         .next()
         .ok_or(ResponseError::BadRequest)?
         .to_string();
@@ -31,7 +31,7 @@ pub fn parse(mut lines: Lines<BufReader<&TcpStream>>) -> Result<Request, Respons
         .ok_or(ResponseError::BadRequest)?
         .to_string();
 
-    let mut headers: HashMap<String, String> = HashMap::new();
+    let mut _headers: HashMap<String, String> = HashMap::new();
 
     for result in lines {
         let line = result?;
@@ -41,15 +41,15 @@ pub fn parse(mut lines: Lines<BufReader<&TcpStream>>) -> Result<Request, Respons
 
         let mut parts = line.splitn(2, ":");
         if let (Some(key), Some(value)) = (parts.next(), parts.next()) {
-            headers.insert(key.trim().to_string(), value.trim().to_string());
+            _headers.insert(key.trim().to_string(), value.trim().to_string());
         } else {
             return Err(ResponseError::BadRequest);
         }
     }
 
     Ok(Request {
-        method,
+        _method,
         path,
-        headers,
+        _headers,
     })
 }

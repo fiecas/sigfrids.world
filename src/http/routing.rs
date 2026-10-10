@@ -11,7 +11,7 @@ pub trait Route {
 #[repr(u16)]
 pub enum RootRoute {
     Root,
-    Api(ApiRoute),
+    _Api(ApiRoute),
 }
 
 #[allow(refining_impl_trait)]
@@ -29,7 +29,7 @@ impl Route for RootRoute {
                 let content = parse_markdown(include_str!("../../content/home.md"));
                 Ok((content, HashMap::new()))
             }
-            RootRoute::Api(api_route) => api_route.handle(),
+            RootRoute::_Api(api_route) => api_route.handle(),
         }
     }
 }

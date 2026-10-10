@@ -25,7 +25,7 @@ pub fn handle_connection(stream: TcpStream) {
         }
     };
 
-    let (content, headers) = match route.handle() {
+    let (content, _headers) = match route.handle() {
         Ok(handle) => handle,
         Err(error) => {
             let status_text = error.to_string();
