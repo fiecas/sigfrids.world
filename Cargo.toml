@@ -6,6 +6,5 @@ edition = "2024"
 [dependencies]
 ctrlc = { version = "3.5.2", features = ["termination"] }
 include_dir = "0.7.4"
-markdown = "1.0.0"
 postgres = "0.19.14"
 pulldown-cmark = "0.13.4"
