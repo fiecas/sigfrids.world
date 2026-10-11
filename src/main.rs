@@ -9,9 +9,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread::available_parallelism;
 
-use postgres::NoTls;
-
-use crate::db::migrations::migrate;
+use crate::db::Client;
 use crate::threading::ThreadPool;
 
 const PORT: u16 = 7878;
@@ -19,9 +17,8 @@ const PORT: u16 = 7878;
 fn main() {
     let db_url = env::var("DATABASE_URL").expect("Environment variable DATABASE_URL is required.");
 
-    let mut client = postgres::Client::connect(&db_url, NoTls).unwrap();
-
-    migrate(&mut client).unwrap();
+    let mut client = Client::connect(&db_url);
+    client.migrate();
 
     let running = Arc::new(AtomicBool::new(true));
     let flag = running.clone();
