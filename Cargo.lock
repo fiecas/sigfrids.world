@@ -477,6 +477,7 @@ dependencies = [
  "bytes",
  "fallible-iterator",
  "postgres-protocol",
+ "uuid",
 ]
 
 [[package]]
@@ -756,6 +757,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b4ac048d71ede7ee76d585517add45da530660ef4390e49b098733c6e897f254"
 
 [[package]]
+name = "uuid"
+version = "1.28.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7cc1186384beb7dd8eedea376413fd654937285ea6c9cfbb928dc3043ea4b606"
+dependencies = [
+ "js-sys",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "wasi"
 version = "0.11.1+wasi-snapshot-preview1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -885,4 +896,5 @@ dependencies = [
  "include_dir",
  "postgres",
  "pulldown-cmark",
+ "uuid",
 ]

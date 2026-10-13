@@ -1,20 +1,21 @@
 use postgres::{Client, Error};
+use uuid::Uuid;
 
 pub struct File {
-    id: String,
+    id: Uuid,
     original_name: String,
     content_type: Option<String>,
     size: i64,
 }
 
 pub fn new(
-    mut client: Client,
+    client: &mut Client,
     original_name: &str,
     content_type: &str,
     size: i64,
 ) -> Result<File, Error> {
     let rows = client.query(
-        include_str!("./sql/insert.sql"),
+        include_str!("./sql/insert_returning_rest.sql"),
         &[&original_name, &content_type, &size],
     )?;
     let row = rows.get(0).unwrap();
@@ -29,7 +30,7 @@ pub fn new(
     })
 }
 
-pub fn get(mut client: Client, id: &str) -> Result<Option<File>, Error> {
+pub fn get(client: &mut Client, id: Uuid) -> Result<Option<File>, Error> {
     let rows = client.query(include_str!("./sql/select_all_where_id.sql"), &[&id])?;
     let row = match rows.get(0) {
         Some(row) => row,
@@ -49,8 +50,8 @@ pub fn get(mut client: Client, id: &str) -> Result<Option<File>, Error> {
     }))
 }
 
-pub fn delete(mut client: Client, id: &str) -> Result<(), Error> {
-    client.execute(include_str!("./sql/delete.sql"), &[&id])?;
+pub fn delete(client: &mut Client, id: Uuid) -> Result<(), Error> {
+    client.execute(include_str!("./sql/delete_where_id.sql"), &[&id])?;
 
     Ok(())
 }
