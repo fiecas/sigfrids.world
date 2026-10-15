@@ -1,12 +1,16 @@
+mod constants;
 mod db;
 mod http;
+mod passwords;
+mod routes;
 mod threading;
+mod utils;
 
 use std::env;
 use std::net::{TcpListener, TcpStream};
 use std::num::NonZero;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 use std::thread::available_parallelism;
 
 use crate::db::Client;
@@ -19,6 +23,7 @@ fn main() {
 
     let mut client = Client::connect(&db_url);
     client.migrate();
+    let db = Arc::new(Mutex::new(client.postgres));
 
     let running = Arc::new(AtomicBool::new(true));
     let flag = running.clone();
@@ -49,7 +54,9 @@ fn main() {
             }
         };
 
-        pool.execute(|| http::handle_connection(stream));
+        let db = Arc::clone(&db);
+
+        pool.execute(|| http::handle_connection(stream, db));
     }
 
     println!("Shutting down...");

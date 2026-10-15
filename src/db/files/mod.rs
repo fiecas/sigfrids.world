@@ -1,6 +1,8 @@
 use postgres::{Client, Error};
 use uuid::Uuid;
 
+use crate::http::error::ResponseError;
+
 pub struct File {
     id: Uuid,
     original_name: String,
@@ -13,7 +15,7 @@ pub fn new(
     original_name: &str,
     content_type: &str,
     size: i64,
-) -> Result<File, Error> {
+) -> Result<File, ResponseError> {
     let rows = client.query(
         include_str!("./sql/insert_returning_rest.sql"),
         &[&original_name, &content_type, &size],
@@ -30,7 +32,7 @@ pub fn new(
     })
 }
 
-pub fn get(client: &mut Client, id: Uuid) -> Result<Option<File>, Error> {
+pub fn get(client: &mut Client, id: Uuid) -> Result<Option<File>, ResponseError> {
     let rows = client.query(include_str!("./sql/select_all_where_id.sql"), &[&id])?;
     let row = match rows.get(0) {
         Some(row) => row,
@@ -50,7 +52,7 @@ pub fn get(client: &mut Client, id: Uuid) -> Result<Option<File>, Error> {
     }))
 }
 
-pub fn delete(client: &mut Client, id: Uuid) -> Result<(), Error> {
+pub fn delete(client: &mut Client, id: Uuid) -> Result<(), ResponseError> {
     client.execute(include_str!("./sql/delete_where_id.sql"), &[&id])?;
 
     Ok(())

@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>yedo's world</title>
+    </head>
+    <body>
+        <form action="/api/auth/signup" method="post">
+            <label for="email">email</label>
+            <input type="email" name="email" id="email" />
+
+            <label for="username">username</label>
+            <input type="text" name="username" id="username" />
+
+            <label for="display-name">display name</label>
+            <input type="text" name="display-name" id="display-name" />
+
+            <label for="password">password</label>
+            <input type="password" name="password" id="password" />
+
+            <button type="submit">submit</button>
+        </form>
+        <a href="/login">login</a>
+    </body>
+</html>

@@ -4,8 +4,17 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+argon2 = "0.6.0"
 ctrlc = { version = "3.5.2", features = ["termination"] }
+form_urlencoded = "1.2.2"
+getrandom = "0.4"
 include_dir = "0.7.4"
 postgres = { version = "0.19.14", features = ["with-uuid-1"] }
 pulldown-cmark = "0.13.4"
+run = "0.7.1"
+sha2 = "0.11"
+subtle = "2.6.1"
 uuid = "1.28.0"
+
+[profile.dev.package.argon2]
+opt-level = 3

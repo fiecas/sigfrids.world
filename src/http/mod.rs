@@ -1,19 +1,26 @@
-mod error;
-mod request;
-mod routing;
+pub mod error;
+pub mod request;
+pub mod routing;
+
 use std::{
     io::{BufReader, prelude::*},
     net::TcpStream,
+    sync::{Arc, Mutex},
 };
 
-use crate::http::routing::{RootRoute, Route};
+use postgres::Client;
 
-pub fn handle_connection(stream: TcpStream) {
-    let buf_reader = BufReader::new(&stream);
-    let request = match request::parse(buf_reader.lines()) {
+use crate::{
+    http::routing::{Headers, Route},
+    routes::RootRoute,
+};
+
+pub fn handle_connection(stream: TcpStream, db: Arc<Mutex<Client>>) {
+    let buf_reader = &mut BufReader::new(&stream);
+    let mut request = match request::parse(buf_reader) {
         Ok(request) => request,
         Err(error) => {
-            return respond(stream, error as u16, "");
+            return respond(stream, error.status_code(), "", Headers::new());
         }
     };
 
@@ -21,26 +28,30 @@ pub fn handle_connection(stream: TcpStream) {
         Ok(route) => route,
         Err(error) => {
             let status_text = error.to_string();
-            return respond(stream, error as u16, &status_text);
+            return respond(stream, error.status_code(), &status_text, Headers::new());
         }
     };
 
-    let (content, _headers) = match route.handle() {
+    let (code, content, headers) = match route.handle(&mut request, db) {
         Ok(handle) => handle,
         Err(error) => {
             let status_text = error.to_string();
-            return respond(stream, error as u16, &status_text);
+            return respond(stream, error.status_code(), &status_text, Headers::new());
         }
     };
 
-    return respond(stream, 200, content.as_str());
+    return respond(stream, code, content.as_str(), headers);
 }
 
-fn respond(mut stream: TcpStream, code: u16, contents: &str) {
+fn respond(mut stream: TcpStream, code: u16, contents: &str, headers: Headers) {
     let status_line = format!("HTTP/1.1 {code}");
 
     let length = contents.len();
-    let response = format!("{status_line}\r\nContent-Length: {length}\r\n\r\n{contents}");
+    let mut response = format!("{status_line}\r\n");
+    for (name, value) in headers {
+        response.push_str(&format!("{name}: {value}\r\n"));
+    }
+    response.push_str(&format!("Content-Length: {length}\r\n\r\n{contents}"));
 
     stream.write_all(response.as_bytes()).unwrap();
 }

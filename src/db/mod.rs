@@ -4,9 +4,11 @@ use crate::db::migrations::migrate;
 
 pub mod files;
 pub mod migrations;
+pub mod sessions;
+pub mod users;
 
 pub struct Client {
-    postgres: postgres::Client,
+    pub postgres: postgres::Client,
 }
 
 impl Client {
