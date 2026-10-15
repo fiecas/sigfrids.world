@@ -12,6 +12,7 @@ pub enum ResponseError {
     Forbidden = 403,
     NotFound = 404,
     MethodNotAllowed(Vec<&'static str>) = 405,
+    RequestTimeout = 408,
     Conflict = 409,
     PayloadTooLarge = 413,
     InternalServerError = 500,
@@ -25,6 +26,7 @@ impl ResponseError {
             ResponseError::Forbidden => 403,
             ResponseError::NotFound => 404,
             ResponseError::MethodNotAllowed(_) => 405,
+            ResponseError::RequestTimeout => 408,
             ResponseError::Conflict => 409,
             ResponseError::PayloadTooLarge => 413,
             ResponseError::InternalServerError => 500,
@@ -45,6 +47,7 @@ impl fmt::Display for ResponseError {
                 write!(f, "Method Not Allowed. Allowed {}", allowed.join(", "))
             }
             ResponseError::Conflict => write!(f, "Conflict"),
+            ResponseError::RequestTimeout => write!(f, "Request Timeout"),
             ResponseError::PayloadTooLarge => write!(f, "Payload Too Large"),
             ResponseError::InternalServerError => write!(f, "Internal Server Error"),
         }
@@ -53,9 +56,14 @@ impl fmt::Display for ResponseError {
 
 impl From<io::Error> for ResponseError {
     fn from(error: io::Error) -> Self {
-        eprintln!("{}", error);
+        match error.kind() {
+            io::ErrorKind::WouldBlock | io::ErrorKind::TimedOut => ResponseError::RequestTimeout,
+            _ => {
+                eprintln!("{}", error);
 
-        ResponseError::InternalServerError
+                ResponseError::InternalServerError
+            }
+        }
     }
 }
 

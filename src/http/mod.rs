@@ -26,6 +26,7 @@ pub fn handle_connection(stream: TcpStream, db: Arc<Mutex<Client>>) {
 
     let (code, content, headers) = match handle_request(&stream, db) {
         Ok(response) => response,
+        Err(ResponseError::RequestTimeout) => return,
         Err(error) => {
             let mut headers: Headers = HashMap::new();
             match &error {
