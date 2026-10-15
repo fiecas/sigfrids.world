@@ -1,4 +1,4 @@
-use postgres::{Client, Error};
+use postgres::Client;
 use uuid::Uuid;
 
 use crate::http::error::ResponseError;

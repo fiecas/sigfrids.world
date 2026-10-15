@@ -1,8 +1,7 @@
-use postgres::Client;
-use std::sync::LazyLock;
+use postgres::{Client, GenericClient};
 use uuid::Uuid;
 
-use crate::{http::error::ResponseError, passwords::hash};
+use crate::http::error::ResponseError;
 
 pub struct User {
     pub id: Uuid,
@@ -14,17 +13,21 @@ pub struct User {
 
 impl User {
     pub fn new(
-        client: &mut Client,
+        client: &mut impl GenericClient,
         username: &str,
         email: &str,
         display_name: &str,
         password_hash: &str,
     ) -> Result<User, ResponseError> {
-        let rows = client.query(
-            include_str!("./sql/insert_returning_id.sql"),
-            &[&username, &email, &display_name, &password_hash],
-        )?;
-        let row = rows.get(0).unwrap();
+        let row = client
+            .query_one(
+                include_str!("./sql/insert_returning_id.sql"),
+                &[&username, &email, &display_name, &password_hash],
+            )
+            .map_err(|e| match e.code() {
+                Some(&postgres::error::SqlState::UNIQUE_VIOLATION) => ResponseError::Conflict,
+                _ => ResponseError::from(e),
+            })?;
 
         let id = row.get("id");
 
@@ -37,33 +40,15 @@ impl User {
         })
     }
 
-    pub fn get(client: &mut Client, username: &str) -> Result<Option<User>, ResponseError> {
-        let rows = client
-            .query(
-                include_str!("./sql/select_all_where_login.sql"),
-                &[&username],
-            )
-            .map_err(|e| match e.code() {
-                Some(&postgres::error::SqlState::UNIQUE_VIOLATION) => ResponseError::Conflict,
-                _ => ResponseError::from(e),
-            })?;
-        let row = match rows.get(0) {
-            Some(row) => row,
-            None => return Ok(None),
-        };
+    pub fn get_by_login(client: &mut Client, login: &str) -> Result<Option<User>, ResponseError> {
+        let row = client.query_opt(include_str!("./sql/select_all_where_login.sql"), &[&login])?;
 
-        let id = row.get("id");
-        let username = row.get("username");
-        let email = row.get("email");
-        let display_name = row.get("display_name");
-        let password_hash = row.get("password_hash");
-
-        Ok(Some(User {
-            id,
-            username,
-            email,
-            display_name,
-            password_hash,
+        Ok(row.map(|row| User {
+            id: row.get("id"),
+            username: row.get("username"),
+            email: row.get("email"),
+            display_name: row.get("display_name"),
+            password_hash: row.get("password_hash"),
         }))
     }
 

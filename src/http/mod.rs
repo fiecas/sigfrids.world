@@ -6,6 +6,7 @@ use std::{
     io::{BufReader, prelude::*},
     net::TcpStream,
     sync::{Arc, Mutex},
+    time::Duration,
 };
 
 use postgres::Client;
@@ -16,6 +17,9 @@ use crate::{
 };
 
 pub fn handle_connection(stream: TcpStream, db: Arc<Mutex<Client>>) {
+    let _ = stream.set_read_timeout(Some(Duration::from_secs(5)));
+    let _ = stream.set_write_timeout(Some(Duration::from_secs(5)));
+
     let buf_reader = &mut BufReader::new(&stream);
     let mut request = match request::parse(buf_reader) {
         Ok(request) => request,
@@ -53,5 +57,5 @@ fn respond(mut stream: TcpStream, code: u16, contents: &str, headers: Headers) {
     }
     response.push_str(&format!("Content-Length: {length}\r\n\r\n{contents}"));
 
-    stream.write_all(response.as_bytes()).unwrap();
+    let _ = stream.write_all(response.as_bytes());
 }

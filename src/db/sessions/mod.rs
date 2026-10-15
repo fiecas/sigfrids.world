@@ -1,4 +1,4 @@
-use postgres::Client;
+use postgres::{Client, GenericClient};
 use sha2::{Digest, Sha256};
 use std::{str::FromStr, time::SystemTime};
 use uuid::Uuid;
@@ -17,7 +17,10 @@ pub struct Session {
 }
 
 impl Session {
-    pub fn new(client: &mut Client, user_id: Uuid) -> Result<Session, ResponseError> {
+    pub fn new(
+        client: &mut impl GenericClient,
+        user_id: Uuid,
+    ) -> Result<(Session, String), ResponseError> {
         let mut secret = [0u8; 32];
         getrandom::fill(&mut secret)?;
 
@@ -25,20 +28,23 @@ impl Session {
 
         let expires_at = SystemTime::now() + SESSION_LENGTH;
 
-        let rows = client.query(
+        let row = client.query_one(
             include_str!("./sql/insert_returning_id.sql"),
             &[&user_id, &secret_hash, &expires_at],
         )?;
-        let row = rows.get(0).unwrap();
 
         let id = row.get("id");
+        let token = format!("{}.{}", id, to_hex(&secret));
 
-        Ok(Session {
-            id,
-            user_id,
-            secret_hash,
-            expires_at,
-        })
+        Ok((
+            Session {
+                id,
+                user_id,
+                secret_hash,
+                expires_at,
+            },
+            token,
+        ))
     }
 
     pub fn get(
@@ -79,12 +85,11 @@ impl Session {
         Ok(())
     }
 
-    pub fn to_cookie(&self) -> Result<String, ResponseError> {
+    pub fn to_cookie(&self, token: &str) -> Result<String, ResponseError> {
         // TODO: make secure
         Ok(format!(
-            "session={}.{}; HttpOnly; SameSite=Lax; Path=/; Max-Age={}",
-            self.id,
-            to_hex(&self.secret_hash),
+            "session={}; HttpOnly; SameSite=Lax; Path=/; Max-Age={}",
+            token,
             self.expires_at.duration_since(SystemTime::now())?.as_secs()
         ))
     }
@@ -93,17 +98,17 @@ impl Session {
         client: &mut Client,
         cookie: &str,
     ) -> Result<Option<Session>, ResponseError> {
-        let (id, secret_hex) = match cookie.split_once(".") {
-            Some(c) => c,
-            None => return Ok(None),
+        let Some((id, secret_hex)) = cookie.split_once(".") else {
+            return Ok(None);
+        };
+        let Ok(id) = Uuid::from_str(id) else {
+            return Ok(None);
+        };
+        let Some(secret) = from_hex(secret_hex) else {
+            return Ok(None);
         };
 
-        let secret_hash = match from_hex(secret_hex) {
-            Some(hash) => hash,
-            None => return Ok(None),
-        };
-
-        Session::get(client, Uuid::from_str(id)?, secret_hash)
+        Session::get(client, id, hash_secret(&secret))
     }
 }
 

@@ -1,6 +1,6 @@
 use std::{
     collections::HashMap,
-    sync::{Arc, LazyLock, Mutex},
+    sync::{Arc, Mutex},
 };
 
 use postgres::Client;
@@ -8,12 +8,9 @@ use postgres::Client;
 use crate::{
     db::{sessions::Session, users::User},
     http::{error::ResponseError, request::Request, routing::Headers},
-    passwords::{self, hash, verify},
+    passwords,
     utils::{valid_email, valid_username},
 };
-
-static DUMMY_HASH: LazyLock<String> =
-    LazyLock::new(|| hash("dummy_hash").expect("failed to generate dummy hash."));
 
 pub enum AuthRoute {
     Login,
@@ -43,45 +40,39 @@ impl super::super::Route for AuthRoute {
                     .filter(|(_, v)| !v.is_empty())
                     .collect();
 
-                let email = form
-                    .get("email")
-                    .ok_or(ResponseError::BadRequest("Email is required."))?
+                let login = form
+                    .get("login")
+                    .ok_or(ResponseError::BadRequest("Email or username is required."))?
                     .as_str();
-
-                if !valid_email(email) {
-                    return Err(ResponseError::BadRequest("Invalid email."));
-                }
 
                 let password = form
                     .get("password")
                     .ok_or(ResponseError::BadRequest("Password is required."))?
                     .as_str();
 
-                if !(8..=128).contains(&password.chars().count()) {
-                    return Err(ResponseError::BadRequest("Invalid password."));
+                if login.len() > 254 || password.chars().count() > 128 {
+                    return Err(ResponseError::Unauthorized);
                 }
 
-                let mut client = db.lock().unwrap();
-                let user = User::get(&mut client, email)?;
-                drop(client);
-
-                let hash = user
-                    .as_ref()
-                    .map(|user| user.password_hash.as_str())
-                    .unwrap_or(DUMMY_HASH.as_str());
-
-                let valid = verify(password, hash);
-
-                let Some(user) = user.filter(|_| valid) else {
-                    return Err(ResponseError::BadRequest("Invalid username or password."));
+                let user = {
+                    let mut client = db.lock().unwrap();
+                    User::get_by_login(&mut client, login)?
                 };
 
-                client = db.lock().unwrap();
-                let session = Session::new(&mut client, user.id)?;
-                drop(client);
+                let stored_hash = user.as_ref().map(|user| user.password_hash.as_str());
+                let valid = passwords::verify_login(password, stored_hash);
+
+                let Some(user) = user.filter(|_| valid) else {
+                    return Err(ResponseError::Unauthorized);
+                };
+
+                let (session, token) = {
+                    let mut client = db.lock().unwrap();
+                    Session::new(&mut *client, user.id)?
+                };
 
                 let mut headers = HashMap::new();
-                headers.insert("Set-Cookie".to_string(), session.to_cookie()?);
+                headers.insert("Set-Cookie".to_string(), session.to_cookie(&token)?);
                 headers.insert("Location".to_string(), "/".to_string());
 
                 Ok((303, "".to_string(), headers))
@@ -108,7 +99,7 @@ impl super::super::Route for AuthRoute {
                     .as_str();
 
                 if !valid_username(username) {
-                    return Err(ResponseError::BadRequest("Invalid email."));
+                    return Err(ResponseError::BadRequest("Invalid username."));
                 }
 
                 let display_name = form
@@ -117,7 +108,7 @@ impl super::super::Route for AuthRoute {
                     .as_str();
 
                 if !(1..=64).contains(&display_name.chars().count())
-                    && !display_name.chars().any(char::is_control)
+                    || display_name.chars().any(char::is_control)
                 {
                     return Err(ResponseError::BadRequest("Invalid display name."));
                 }
@@ -131,31 +122,33 @@ impl super::super::Route for AuthRoute {
                     return Err(ResponseError::BadRequest("Invalid password."));
                 }
 
-                let mut client = db.lock().unwrap();
-                if User::exists(&mut client, email, username)
-                    .map_err(|_| ResponseError::InternalServerError)?
                 {
-                    return Err(ResponseError::Conflict);
+                    let mut client = db.lock().unwrap();
+                    if User::exists(&mut client, email, username)? {
+                        return Err(ResponseError::Conflict);
+                    }
                 }
-                drop(client);
 
                 let password_hash =
                     passwords::hash(password).map_err(|_| ResponseError::InternalServerError)?;
 
-                client = db.lock().unwrap();
-                let user = User::new(
-                    &mut client,
-                    username,
-                    email,
-                    display_name,
-                    password_hash.as_str(),
-                )?;
-
-                let session = Session::new(&mut client, user.id)?;
-                drop(client);
+                let (session, token) = {
+                    let mut client = db.lock().unwrap();
+                    let mut transaction = client.transaction()?;
+                    let user = User::new(
+                        &mut transaction,
+                        username,
+                        email,
+                        display_name,
+                        password_hash.as_str(),
+                    )?;
+                    let session = Session::new(&mut transaction, user.id)?;
+                    transaction.commit()?;
+                    session
+                };
 
                 let mut headers = HashMap::new();
-                headers.insert("Set-Cookie".to_string(), session.to_cookie()?);
+                headers.insert("Set-Cookie".to_string(), session.to_cookie(&token)?);
                 headers.insert("Location".to_string(), "/".to_string());
 
                 Ok((303, "".to_string(), headers))
@@ -168,11 +161,12 @@ impl super::super::Route for AuthRoute {
                 );
                 headers.insert("Location".to_string(), "/".to_string());
 
-                let mut client = db.lock().unwrap();
-                if let Some(session) = &request.context.session {
-                    let _ = session.delete(&mut client);
+                if let Some(cookie) = request.cookies.get("session") {
+                    let mut client = db.lock().unwrap();
+                    if let Some(session) = Session::from_cookie(&mut client, cookie)? {
+                        session.delete(&mut client)?;
+                    }
                 }
-                drop(client);
 
                 Ok((303, "".to_string(), headers))
             }

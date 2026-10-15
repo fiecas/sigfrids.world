@@ -1,5 +1,5 @@
 use std::{
-    fmt::{self, Display},
+    fmt::{self},
     io,
     string::FromUtf8Error,
     time::SystemTimeError,
@@ -8,6 +8,7 @@ use std::{
 #[repr(u16)]
 pub enum ResponseError {
     BadRequest(&'static str) = 400,
+    Unauthorized = 401,
     Forbidden = 403,
     NotFound = 404,
     Conflict = 409,
@@ -19,6 +20,7 @@ impl ResponseError {
     pub fn status_code(&self) -> u16 {
         match self {
             ResponseError::BadRequest(_) => 400,
+            ResponseError::Unauthorized => 401,
             ResponseError::Forbidden => 403,
             ResponseError::NotFound => 404,
             ResponseError::Conflict => 409,
@@ -34,6 +36,7 @@ impl fmt::Display for ResponseError {
             ResponseError::BadRequest(msg) => {
                 write!(f, "Bad Request: {}", msg)
             }
+            ResponseError::Unauthorized => write!(f, "Unauthorized"),
             ResponseError::Forbidden => write!(f, "Forbidden"),
             ResponseError::NotFound => write!(f, "Not Found"),
             ResponseError::Conflict => write!(f, "Conflict"),
@@ -53,7 +56,7 @@ impl From<io::Error> for ResponseError {
 
 impl From<postgres::Error> for ResponseError {
     fn from(error: postgres::Error) -> Self {
-        eprintln!("{}", error);
+        eprintln!("{:?}", error);
 
         ResponseError::InternalServerError
     }
