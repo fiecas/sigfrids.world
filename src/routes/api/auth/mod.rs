@@ -33,6 +33,10 @@ impl super::super::Route for AuthRoute {
         request: &mut Request,
         db: Arc<Mutex<Client>>,
     ) -> Result<(u16, String, Headers), ResponseError> {
+        if request.method != "POST" {
+            return Err(ResponseError::MethodNotAllowed(vec!["POST"]));
+        }
+
         match self {
             AuthRoute::Login => {
                 let form: HashMap<String, String> = form_urlencoded::parse(&request.body)

@@ -3,6 +3,7 @@ pub mod request;
 pub mod routing;
 
 use std::{
+    collections::HashMap,
     io::{BufReader, prelude::*},
     net::TcpStream,
     sync::{Arc, Mutex},
@@ -12,7 +13,10 @@ use std::{
 use postgres::Client;
 
 use crate::{
-    http::routing::{Headers, Route},
+    http::{
+        error::ResponseError,
+        routing::{Headers, Route},
+    },
     routes::RootRoute,
 };
 
@@ -20,31 +24,33 @@ pub fn handle_connection(stream: TcpStream, db: Arc<Mutex<Client>>) {
     let _ = stream.set_read_timeout(Some(Duration::from_secs(5)));
     let _ = stream.set_write_timeout(Some(Duration::from_secs(5)));
 
-    let buf_reader = &mut BufReader::new(&stream);
-    let mut request = match request::parse(buf_reader) {
-        Ok(request) => request,
+    let (code, content, headers) = match handle_request(&stream, db) {
+        Ok(response) => response,
         Err(error) => {
-            return respond(stream, error.status_code(), "", Headers::new());
-        }
-    };
-
-    let route = match RootRoute::from_path(request.path.as_str()) {
-        Ok(route) => route,
-        Err(error) => {
-            let status_text = error.to_string();
-            return respond(stream, error.status_code(), &status_text, Headers::new());
-        }
-    };
-
-    let (code, content, headers) = match route.handle(&mut request, db) {
-        Ok(handle) => handle,
-        Err(error) => {
-            let status_text = error.to_string();
-            return respond(stream, error.status_code(), &status_text, Headers::new());
+            let mut headers: Headers = HashMap::new();
+            match &error {
+                ResponseError::MethodNotAllowed(allowed_methods) => {
+                    headers.insert("Allow".to_string(), allowed_methods.join(","));
+                }
+                _ => {}
+            }
+            (error.status_code(), error.to_string(), headers)
         }
     };
 
     return respond(stream, code, content.as_str(), headers);
+}
+
+fn handle_request(
+    stream: &TcpStream,
+    db: Arc<Mutex<Client>>,
+) -> Result<(u16, String, Headers), ResponseError> {
+    let buf_reader = &mut BufReader::new(stream);
+    let mut request = request::parse(buf_reader)?;
+
+    let route = RootRoute::from_path(request.path.as_str())?;
+
+    Ok(route.handle(&mut request, db)?)
 }
 
 fn respond(mut stream: TcpStream, code: u16, contents: &str, headers: Headers) {

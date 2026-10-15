@@ -11,6 +11,7 @@ pub enum ResponseError {
     Unauthorized = 401,
     Forbidden = 403,
     NotFound = 404,
+    MethodNotAllowed(Vec<&'static str>) = 405,
     Conflict = 409,
     PayloadTooLarge = 413,
     InternalServerError = 500,
@@ -23,6 +24,7 @@ impl ResponseError {
             ResponseError::Unauthorized => 401,
             ResponseError::Forbidden => 403,
             ResponseError::NotFound => 404,
+            ResponseError::MethodNotAllowed(_) => 405,
             ResponseError::Conflict => 409,
             ResponseError::PayloadTooLarge => 413,
             ResponseError::InternalServerError => 500,
@@ -39,6 +41,9 @@ impl fmt::Display for ResponseError {
             ResponseError::Unauthorized => write!(f, "Unauthorized"),
             ResponseError::Forbidden => write!(f, "Forbidden"),
             ResponseError::NotFound => write!(f, "Not Found"),
+            ResponseError::MethodNotAllowed(allowed) => {
+                write!(f, "Method Not Allowed. Allowed {}", allowed.join(", "))
+            }
             ResponseError::Conflict => write!(f, "Conflict"),
             ResponseError::PayloadTooLarge => write!(f, "Payload Too Large"),
             ResponseError::InternalServerError => write!(f, "Internal Server Error"),
