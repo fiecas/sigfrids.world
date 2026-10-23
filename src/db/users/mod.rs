@@ -1,4 +1,3 @@
-use argon2::password_hash;
 use postgres::{Client, GenericClient};
 use uuid::Uuid;
 
@@ -77,12 +76,6 @@ impl User {
                 row.get("password_hash"),
             )
         }))
-    }
-
-    pub fn delete(client: &mut Client, id: Uuid) -> Result<(), ResponseError> {
-        client.execute(include_str!("./sql/delete_where_id.sql"), &[&id])?;
-
-        Ok(())
     }
 
     pub fn exists(client: &mut Client, email: &str, username: &str) -> Result<bool, ResponseError> {
