@@ -66,7 +66,6 @@ impl Route for RootRoute {
             }
             RootRoute::Api(api_route) => api_route.handle(request, db),
             RootRoute::App(app_route) => app_route.handle(request, db),
-            _ => Err(ResponseError::NotFound),
         }
     }
 }
