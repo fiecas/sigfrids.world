@@ -49,6 +49,10 @@ impl Route for RootRoute {
                 let content = parse_markdown(include_str!("../../content/home.md"));
                 Ok((200, content, HashMap::new()))
             }
+            RootRoute::Login => {
+                let content = include_str!("../../templates/login.html").to_string();
+                Ok((200, content, HashMap::new()))
+            }
             RootRoute::Signup => {
                 let content = include_str!("../../templates/signup.html").to_string();
                 Ok((200, content, HashMap::new()))
