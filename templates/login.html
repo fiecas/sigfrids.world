@@ -3,15 +3,27 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>yedo's world</title>
+        <title>sigfrid's world</title>
     </head>
     <body>
         <form action="/api/auth/login" method="post">
             <label for="login">email or username</label>
-            <input type="text" name="login" id="login" autocomplete="username" required />
+            <input
+                type="text"
+                name="login"
+                id="login"
+                autocomplete="username"
+                required
+            />
 
             <label for="password">password</label>
-            <input type="password" name="password" id="password" autocomplete="current-password" required />
+            <input
+                type="password"
+                name="password"
+                id="password"
+                autocomplete="current-password"
+                required
+            />
 
             <button type="submit">submit</button>
         </form>
