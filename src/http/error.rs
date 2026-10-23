@@ -6,6 +6,7 @@ use std::{
 };
 
 #[repr(u16)]
+#[derive(Debug)]
 pub enum ResponseError {
     BadRequest(&'static str) = 400,
     Unauthorized = 401,

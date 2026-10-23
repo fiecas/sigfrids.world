@@ -40,6 +40,13 @@ impl User {
         })
     }
 
+    pub fn count(client: &mut Client) -> Result<i64, ResponseError> {
+        let row = client.query_one(include_str!("./sql/count_all.sql"), &[])?;
+        let count: i64 = row.get(0);
+
+        Ok(count)
+    }
+
     pub fn get_by_login(client: &mut Client, login: &str) -> Result<Option<User>, ResponseError> {
         let row = client.query_opt(include_str!("./sql/select_all_where_login.sql"), &[&login])?;
 
