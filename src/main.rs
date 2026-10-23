@@ -29,7 +29,7 @@ fn main() {
         let default_admin_email = env::var("ADMIN_EMAIL")
             .expect("Environment variable ADMIN_EMAIL is required on first startup");
         let default_admin_password = env::var("ADMIN_PASSWORD")
-            .expect("Environment variable ADMIN_EMAIL is required on first startup");
+            .expect("Environment variable ADMIN_PASSWORD is required on first startup");
 
         User::new(
             &mut client.postgres,
