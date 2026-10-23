@@ -63,10 +63,12 @@ impl super::super::Route for AuthRoute {
                     User::get_by_login(&mut client, login)?
                 };
 
-                let stored_hash = user.as_ref().map(|user| user.password_hash.as_str());
+                let stored_hash = user
+                    .as_ref()
+                    .map(|(_, password_hash)| password_hash.as_str());
                 let valid = passwords::verify_login(password, stored_hash);
 
-                let Some(user) = user.filter(|_| valid) else {
+                let Some((user, _)) = user.filter(|_| valid) else {
                     return Err(ResponseError::Unauthorized);
                 };
 
@@ -77,7 +79,7 @@ impl super::super::Route for AuthRoute {
 
                 let mut headers = HashMap::new();
                 headers.insert("Set-Cookie".to_string(), session.to_cookie(&token)?);
-                headers.insert("Location".to_string(), "/".to_string());
+                headers.insert("Location".to_string(), "/app".to_string());
 
                 Ok((303, "".to_string(), headers))
             }
@@ -153,7 +155,7 @@ impl super::super::Route for AuthRoute {
 
                 let mut headers = HashMap::new();
                 headers.insert("Set-Cookie".to_string(), session.to_cookie(&token)?);
-                headers.insert("Location".to_string(), "/".to_string());
+                headers.insert("Location".to_string(), "/app".to_string());
 
                 Ok((303, "".to_string(), headers))
             }

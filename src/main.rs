@@ -31,15 +31,19 @@ fn main() {
 
     let mut client = Client::connect(&db_url);
     client.migrate();
+    let db = Arc::new(Mutex::new(client.postgres));
 
-    if User::count(&mut client.postgres).expect("Could not count users.") == 0 {
+    let mut postgres = db.lock().unwrap();
+    let mut transaction = postgres.transaction().unwrap();
+
+    if User::count(&mut transaction).expect("Could not count users.") == 0 {
         let default_admin_email = env::var("ADMIN_EMAIL")
             .expect("Environment variable ADMIN_EMAIL is required on first startup");
         let default_admin_password = env::var("ADMIN_PASSWORD")
             .expect("Environment variable ADMIN_PASSWORD is required on first startup");
 
         User::new(
-            &mut client.postgres,
+            &mut transaction,
             "admin",
             &default_admin_email,
             "Admin",
@@ -49,8 +53,8 @@ fn main() {
         )
         .expect("Could not create admin user.");
     }
-
-    let db = Arc::new(Mutex::new(client.postgres));
+    transaction.commit().unwrap();
+    drop(postgres);
 
     let running = Arc::new(AtomicBool::new(true));
     let flag = running.clone();

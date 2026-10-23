@@ -4,7 +4,7 @@ use std::{
 };
 
 use crate::{
-    db::sessions::Session,
+    db::{sessions::Session, users::User},
     http::{error::ResponseError, request::Request, routing::Headers},
 };
 
@@ -33,16 +33,22 @@ impl super::Route for AppRoute {
         };
 
         let mut client = db.lock().unwrap();
-        match Session::from_cookie(&mut client, session_cookie)? {
-            Some(session) => request.context.session = Some(session),
-            None => return Err(ResponseError::Forbidden),
-        };
+        let session =
+            Session::from_cookie(&mut client, session_cookie)?.ok_or(ResponseError::Forbidden)?;
+        let user =
+            User::get_by_id(&mut client, session.user_id)?.ok_or(ResponseError::Forbidden)?;
         drop(client);
+
+        request.context.session = Some(session);
 
         match self {
             AppRoute::Root => Ok((
                 200,
-                include_str!("../../../templates/app.html").to_string(),
+                include_str!("../../../templates/app.html")
+                    .to_string()
+                    .replace("<display-name />", &user.display_name)
+                    .replace("<username />", &user.username)
+                    .replace("<email />", &user.email),
                 HashMap::new(),
             )),
         }
