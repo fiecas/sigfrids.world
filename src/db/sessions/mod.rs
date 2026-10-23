@@ -12,7 +12,6 @@ use crate::{
 pub struct Session {
     pub id: Uuid,
     pub user_id: Uuid,
-    pub secret_hash: Vec<u8>,
     pub expires_at: SystemTime,
 }
 
@@ -40,7 +39,6 @@ impl Session {
             Session {
                 id,
                 user_id,
-                secret_hash,
                 expires_at,
             },
             token,
@@ -74,7 +72,6 @@ impl Session {
         Ok(Some(Session {
             id,
             user_id,
-            secret_hash,
             expires_at,
         }))
     }
