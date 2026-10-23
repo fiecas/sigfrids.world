@@ -21,6 +21,7 @@ use crate::{
 #[repr(u16)]
 pub enum RootRoute {
     Root,
+    Health,
     Login,
     Signup,
     Api(ApiRoute),
@@ -31,6 +32,7 @@ impl Route for RootRoute {
     fn from_path(path: &str) -> Result<RootRoute, ResponseError> {
         Ok(match path {
             "/" => RootRoute::Root,
+            "/health" => RootRoute::Health,
             "/login" => RootRoute::Login,
             "/signup" => RootRoute::Signup,
             p if p.starts_with("/api") => RootRoute::Api(ApiRoute::from_path(p)?),
@@ -48,6 +50,11 @@ impl Route for RootRoute {
             RootRoute::Root => {
                 let content = parse_markdown(include_str!("../../content/home.md"));
                 Ok((200, content, HashMap::new()))
+            }
+            RootRoute::Health => {
+                let mut db = db.lock().map_err(|_| ResponseError::InternalServerError)?;
+                db.simple_query("SELECT 1")?;
+                Ok((200, "OK".to_string(), HashMap::new()))
             }
             RootRoute::Login => {
                 let content = include_str!("../../templates/login.html").to_string();

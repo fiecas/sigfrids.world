@@ -7,11 +7,14 @@ mod threading;
 mod utils;
 
 use std::env;
-use std::net::{TcpListener, TcpStream};
+use std::io::{BufRead, BufReader, Write};
+use std::net::{Ipv4Addr, SocketAddr, TcpListener, TcpStream};
 use std::num::NonZero;
+use std::process;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread::available_parallelism;
+use std::time::Duration;
 
 use crate::db::Client;
 use crate::db::users::User;
@@ -20,6 +23,10 @@ use crate::threading::ThreadPool;
 const PORT: u16 = 7878;
 
 fn main() {
+    if env::args().any(|arg| arg == "--healthcheck") {
+        process::exit(healthcheck());
+    }
+
     let db_url = env::var("DATABASE_URL").expect("Environment variable DATABASE_URL is required");
 
     let mut client = Client::connect(&db_url);
@@ -80,4 +87,27 @@ fn main() {
     }
 
     println!("Shutting down...");
+}
+
+fn healthcheck() -> i32 {
+    let address = SocketAddr::from((Ipv4Addr::LOCALHOST, PORT));
+    let Ok(mut stream) = TcpStream::connect_timeout(&address, Duration::from_secs(2)) else {
+        return 1;
+    };
+    let _ = stream.set_read_timeout(Some(Duration::from_secs(3)));
+
+    if stream
+        .write_all(b"GET /health HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n")
+        .is_err()
+    {
+        return 1;
+    }
+
+    let mut status_line = String::new();
+    let _ = BufReader::new(stream).read_line(&mut status_line);
+
+    match status_line.split_whitespace().nth(1) {
+        Some("200") => 0,
+        _ => 1,
+    }
 }
