@@ -1081,6 +1081,7 @@ dependencies = [
  "pulldown-cmark",
  "run",
  "sha2",
+ "socket2",
  "subtle",
  "uuid",
 ]

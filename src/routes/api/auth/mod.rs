@@ -32,7 +32,7 @@ impl super::super::Route for AuthRoute {
         &self,
         request: &mut Request,
         db: Arc<Mutex<Client>>,
-    ) -> Result<(u16, String, Headers), ResponseError> {
+    ) -> Result<(u16, Vec<u8>, Headers), ResponseError> {
         if request.method != "POST" {
             return Err(ResponseError::MethodNotAllowed(vec!["POST"]));
         }
@@ -81,7 +81,7 @@ impl super::super::Route for AuthRoute {
                 headers.insert("Set-Cookie".to_string(), session.to_cookie(&token)?);
                 headers.insert("Location".to_string(), "/app".to_string());
 
-                Ok((303, "".to_string(), headers))
+                Ok((303, b"".to_vec(), headers))
             }
 
             AuthRoute::Signup => {
@@ -157,7 +157,7 @@ impl super::super::Route for AuthRoute {
                 headers.insert("Set-Cookie".to_string(), session.to_cookie(&token)?);
                 headers.insert("Location".to_string(), "/app".to_string());
 
-                Ok((303, "".to_string(), headers))
+                Ok((303, b"".to_vec(), headers))
             }
             AuthRoute::Logout => {
                 let mut headers = HashMap::new();
@@ -174,7 +174,7 @@ impl super::super::Route for AuthRoute {
                     }
                 }
 
-                Ok((303, "".to_string(), headers))
+                Ok((303, b"".to_vec(), headers))
             }
         }
     }

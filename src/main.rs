@@ -7,14 +7,16 @@ mod threading;
 mod utils;
 
 use std::env;
-use std::io::{BufRead, BufReader, Write};
+use std::io::{self, BufRead, BufReader, Write};
 use std::net::{Ipv4Addr, SocketAddr, TcpListener, TcpStream};
 use std::num::NonZero;
 use std::process;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
-use std::thread::available_parallelism;
+use std::thread::{self, available_parallelism};
 use std::time::Duration;
+
+use socket2::{Domain, Socket, Type};
 
 use crate::db::Client;
 use crate::db::users::User;
@@ -58,13 +60,13 @@ fn main() {
 
     let running = Arc::new(AtomicBool::new(true));
     let flag = running.clone();
-    ctrlc::set_handler(move || {
-        flag.store(false, Ordering::SeqCst);
-        let _ = TcpStream::connect(("127.0.0.1", PORT));
-    })
-    .expect("Error setting Ctrl-C handler");
+    ctrlc::set_handler(move || flag.store(false, Ordering::SeqCst))
+        .expect("Error setting Ctrl-C handler");
 
-    let listener = TcpListener::bind(("0.0.0.0", PORT)).unwrap();
+    let listener = bind_listener().expect("Could not bind listener.");
+    listener
+        .set_nonblocking(true)
+        .expect("Could not set listener to non-blocking.");
     let pool = ThreadPool::new(
         available_parallelism()
             .unwrap_or(NonZero::new(4).unwrap())
@@ -72,18 +74,26 @@ fn main() {
             * 2,
     );
 
-    for stream in listener.incoming() {
-        if !running.load(Ordering::SeqCst) {
-            break;
-        }
-
-        let stream = match stream {
-            Ok(stream) => stream,
+    // Polls instead of blocking so shutdown doesn't depend on a wake-up
+    // connection, which could land in another process sharing the port.
+    while running.load(Ordering::SeqCst) {
+        let stream = match listener.accept() {
+            Ok((stream, _)) => stream,
+            Err(error) if error.kind() == io::ErrorKind::WouldBlock => {
+                thread::sleep(Duration::from_millis(10));
+                continue;
+            }
             Err(error) => {
                 eprintln!("{}", error);
                 continue;
             }
         };
+
+        // Accepted sockets inherit non-blocking mode on some platforms.
+        if let Err(error) = stream.set_nonblocking(false) {
+            eprintln!("{}", error);
+            continue;
+        }
 
         let db = Arc::clone(&db);
 
@@ -91,6 +101,17 @@ fn main() {
     }
 
     println!("Shutting down...");
+}
+
+fn bind_listener() -> io::Result<TcpListener> {
+    let socket = Socket::new(Domain::IPV4, Type::STREAM, None)?;
+    socket.set_reuse_address(true)?;
+    // In dev, lets dev.sh start the new server before stopping the old one.
+    socket.set_reuse_port(cfg!(debug_assertions))?;
+    socket.bind(&SocketAddr::from((Ipv4Addr::UNSPECIFIED, PORT)).into())?;
+    socket.listen(128)?;
+
+    Ok(socket.into())
 }
 
 fn healthcheck() -> i32 {

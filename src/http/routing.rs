@@ -15,5 +15,5 @@ pub trait Route: Sized {
         &self,
         request: &mut Request,
         db: Arc<Mutex<Client>>,
-    ) -> Result<(u16, String, Headers), ResponseError>;
+    ) -> Result<(u16, Vec<u8>, Headers), ResponseError>;
 }

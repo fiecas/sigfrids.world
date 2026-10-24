@@ -22,7 +22,7 @@ impl super::Route for ApiRoute {
         &self,
         request: &mut Request,
         db: Arc<Mutex<Client>>,
-    ) -> Result<(u16, String, Headers), ResponseError> {
+    ) -> Result<(u16, Vec<u8>, Headers), ResponseError> {
         match self {
             ApiRoute::Auth(auth_route) => auth_route.handle(request, db),
         }

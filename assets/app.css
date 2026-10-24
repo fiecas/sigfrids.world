@@ -1,0 +1,27 @@
+body {
+    --bg: #1c5a1f;
+    --bg-lines: #d7b004;
+    background-color: var(--bg);
+    background-image:
+        linear-gradient(var(--bg-lines) 8px, transparent 8px),
+        linear-gradient(90deg, var(--bg-lines) 8px, transparent 8px),
+        linear-gradient(var(--bg-lines) 4px, transparent 4px),
+        linear-gradient(90deg, var(--bg-lines) 4px, var(--bg) 4px);
+    background-size:
+        200px 200px,
+        200px 200px,
+        40px 40px,
+        40px 40px;
+    background-position:
+        -8px -8px,
+        -8px -8px,
+        -4px -4px,
+        -4px -4px;
+}
+
+main {
+    min-height: calc(100vh - 4rem);
+    background-color: white;
+    max-width: 1200px;
+    margin: 2rem auto;
+}

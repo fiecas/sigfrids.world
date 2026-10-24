@@ -26,7 +26,7 @@ impl super::Route for AppRoute {
         &self,
         request: &mut Request,
         db: Arc<Mutex<Client>>,
-    ) -> Result<(u16, String, Headers), ResponseError> {
+    ) -> Result<(u16, Vec<u8>, Headers), ResponseError> {
         let session_cookie = match request.cookies.get("session") {
             Some(session_cookie) => session_cookie,
             None => return Err(ResponseError::Forbidden),
@@ -48,7 +48,8 @@ impl super::Route for AppRoute {
                     .to_string()
                     .replace("<display-name />", &user.display_name)
                     .replace("<username />", &user.username)
-                    .replace("<email />", &user.email),
+                    .replace("<email />", &user.email)
+                    .into_bytes(),
                 HashMap::new(),
             )),
         }

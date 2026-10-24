@@ -35,17 +35,17 @@ pub fn handle_connection(stream: TcpStream, db: Arc<Mutex<Client>>) {
                 }
                 _ => {}
             }
-            (error.status_code(), error.to_string(), headers)
+            (error.status_code(), error.to_string().into_bytes(), headers)
         }
     };
 
-    return respond(stream, code, content.as_str(), headers);
+    return respond(stream, code, content, headers);
 }
 
 fn handle_request(
     stream: &TcpStream,
     db: Arc<Mutex<Client>>,
-) -> Result<(u16, String, Headers), ResponseError> {
+) -> Result<(u16, Vec<u8>, Headers), ResponseError> {
     let buf_reader = &mut BufReader::new(stream);
     let mut request = request::parse(buf_reader)?;
 
@@ -54,15 +54,15 @@ fn handle_request(
     Ok(route.handle(&mut request, db)?)
 }
 
-fn respond(mut stream: TcpStream, code: u16, contents: &str, headers: Headers) {
+fn respond(mut stream: TcpStream, code: u16, content: Vec<u8>, headers: Headers) {
     let status_line = format!("HTTP/1.1 {code}");
 
-    let length = contents.len();
-    let mut response = format!("{status_line}\r\n");
+    let mut head = format!("{status_line}\r\n");
     for (name, value) in headers {
-        response.push_str(&format!("{name}: {value}\r\n"));
+        head.push_str(&format!("{name}: {value}\r\n"));
     }
-    response.push_str(&format!("Content-Length: {length}\r\n\r\n{contents}"));
+    head.push_str(&format!("Content-Length: {}\r\n\r\n", content.len()));
 
-    let _ = stream.write_all(response.as_bytes());
+    let _ = stream.write_all(head.as_bytes());
+    let _ = stream.write_all(&content);
 }
