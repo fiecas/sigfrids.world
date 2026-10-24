@@ -16,7 +16,7 @@ use crate::{
         routing::{Headers, Route},
     },
     routes::{api::ApiRoute, app::AppRoute},
-    utils::parse_markdown,
+    utils::{parse_markdown, with_default_template},
 };
 
 static ASSETS: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/assets");
@@ -64,11 +64,11 @@ impl Route for RootRoute {
                 Ok((200, b"OK".to_vec(), HashMap::new()))
             }
             RootRoute::Login => {
-                let content = include_str!("../../templates/login.html").to_string();
+                let content = with_default_template(include_str!("../../content/login.html"));
                 Ok((200, content.into_bytes(), HashMap::new()))
             }
             RootRoute::Signup => {
-                let content = include_str!("../../templates/signup.html").to_string();
+                let content = with_default_template(include_str!("../../content/signup.html"));
                 Ok((200, content.into_bytes(), HashMap::new()))
             }
             RootRoute::Api(api_route) => api_route.handle(request, db),

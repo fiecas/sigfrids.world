@@ -16,14 +16,17 @@ pub fn valid_username(username: &str) -> bool {
             .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
 }
 
-pub fn parse_markdown(markdown: &str) -> String {
+pub fn with_default_template(content: &str) -> String {
     let template = include_str!("../templates/default.html");
+    template.replace("<content />", &content)
+}
 
+pub fn parse_markdown(markdown: &str) -> String {
     let mut html = String::new();
     let parser = Parser::new(markdown);
     html::push_html(&mut html, parser);
 
-    template.replace("<content />", &html)
+    with_default_template(&html)
 }
 
 pub fn to_hex(bytes: &[u8]) -> String {

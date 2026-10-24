@@ -76,10 +76,14 @@ fn main() {
 
     // Polls instead of blocking so shutdown doesn't depend on a wake-up
     // connection, which could land in another process sharing the port.
-    while running.load(Ordering::SeqCst) {
+    // Only stops once the queue is empty, so queued connections aren't dropped.
+    loop {
         let stream = match listener.accept() {
             Ok((stream, _)) => stream,
             Err(error) if error.kind() == io::ErrorKind::WouldBlock => {
+                if !running.load(Ordering::SeqCst) {
+                    break;
+                }
                 thread::sleep(Duration::from_millis(10));
                 continue;
             }

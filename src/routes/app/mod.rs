@@ -6,6 +6,7 @@ use std::{
 use crate::{
     db::{sessions::Session, users::User},
     http::{error::ResponseError, request::Request, routing::Headers},
+    utils::with_default_template,
 };
 
 use postgres::Client;
@@ -44,8 +45,7 @@ impl super::Route for AppRoute {
         match self {
             AppRoute::Root => Ok((
                 200,
-                include_str!("../../../templates/app.html")
-                    .to_string()
+                with_default_template(include_str!("../../../content/app.html"))
                     .replace("<display-name />", &user.display_name)
                     .replace("<username />", &user.username)
                     .replace("<email />", &user.email)
