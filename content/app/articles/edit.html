@@ -1,0 +1,26 @@
+<form action="/api/articles/edit" method="post">
+    <input type="hidden" name="id" value="{{id}}" />
+
+    <label for="slug">slug</label>
+    <input type="text" name="slug" id="slug" value="{{slug}}" />
+
+    <label for="title">title</label>
+    <input type="text" name="title" id="title" value="{{title}}" />
+
+    <label for="content">content</label>
+    <textarea name="content" id="content">{{content}}</textarea>
+
+    <label for="short">short</label>
+    <textarea name="short" id="short">{{short}}</textarea>
+
+    <button type="submit">save</button>
+</form>
+
+<form action="/api/articles/publish" method="post">
+    <p>status: {{status}} {{view_link}}</p>
+
+    <input type="hidden" name="id" value="{{id}}" />
+    <input type="hidden" name="published" value="{{publish_value}}" />
+
+    <button type="submit">{{publish_label}}</button>
+</form>

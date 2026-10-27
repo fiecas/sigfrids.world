@@ -2,6 +2,7 @@ use postgres::NoTls;
 
 use crate::db::migrations::migrate;
 
+pub mod articles;
 pub mod files;
 pub mod migrations;
 pub mod sessions;

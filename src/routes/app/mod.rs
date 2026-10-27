@@ -4,21 +4,27 @@ use std::{
 };
 
 use crate::{
-    db::{sessions::Session, users::User},
     http::{error::ResponseError, request::Request, routing::Headers},
+    routes::{app::articles::ArticlesRoute, current_user, require_admin},
     utils::with_default_template,
 };
 
 use postgres::Client;
 
+mod articles;
+
 pub enum AppRoute {
     Root,
+    Articles(ArticlesRoute),
 }
 
 impl super::Route for AppRoute {
     fn from_path(path: &str) -> Result<Self, ResponseError> {
         Ok(match path {
             "/app" => AppRoute::Root,
+            p if p.starts_with("/app/articles") => {
+                AppRoute::Articles(ArticlesRoute::from_path(path)?)
+            }
             _ => return Err(ResponseError::NotFound),
         })
     }
@@ -28,30 +34,22 @@ impl super::Route for AppRoute {
         request: &mut Request,
         db: Arc<Mutex<Client>>,
     ) -> Result<(u16, Vec<u8>, Headers), ResponseError> {
-        let session_cookie = match request.cookies.get("session") {
-            Some(session_cookie) => session_cookie,
-            None => return Err(ResponseError::Forbidden),
+        let user = match self {
+            AppRoute::Articles(_) => require_admin(request, &db)?,
+            _ => current_user(request, &db)?,
         };
-
-        let mut client = db.lock().unwrap();
-        let session =
-            Session::from_cookie(&mut client, session_cookie)?.ok_or(ResponseError::Forbidden)?;
-        let user =
-            User::get_by_id(&mut client, session.user_id)?.ok_or(ResponseError::Forbidden)?;
-        drop(client);
-
-        request.context.session = Some(session);
 
         match self {
             AppRoute::Root => Ok((
                 200,
-                with_default_template(include_str!("../../../content/app.html"))
+                with_default_template(include_str!("../../../content/app/index.html"))
                     .replace("<display-name />", &user.display_name)
                     .replace("<username />", &user.username)
                     .replace("<email />", &user.email)
                     .into_bytes(),
                 HashMap::new(),
             )),
+            AppRoute::Articles(route) => route.handle(request, db),
         }
     }
 }

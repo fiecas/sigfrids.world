@@ -14,6 +14,7 @@ use crate::{
 pub struct Request {
     pub method: String,
     pub path: String,
+    pub query: HashMap<String, String>,
     pub headers: Headers,
     pub cookies: HashMap<String, String>,
     pub body: Vec<u8>,
@@ -34,10 +35,14 @@ pub fn parse(reader: &mut BufReader<&TcpStream>) -> Result<Request, ResponseErro
         .next()
         .ok_or(ResponseError::BadRequest("Request method missing."))?
         .to_string();
-    let path = request_line_split
+    let target = request_line_split
         .next()
-        .ok_or(ResponseError::BadRequest("Request path missing."))?
-        .to_string();
+        .ok_or(ResponseError::BadRequest("Request target missing."))?;
+    let (path, query_string) = target.split_once("?").unwrap_or((target, ""));
+    let path = path.to_string();
+    let query: HashMap<String, String> = form_urlencoded::parse(query_string.as_bytes())
+        .into_owned()
+        .collect();
 
     let mut headers: HashMap<String, String> = HashMap::new();
 
@@ -95,6 +100,7 @@ pub fn parse(reader: &mut BufReader<&TcpStream>) -> Result<Request, ResponseErro
     Ok(Request {
         method,
         path,
+        query,
         headers,
         cookies,
         body,

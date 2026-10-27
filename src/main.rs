@@ -19,7 +19,7 @@ use std::time::Duration;
 use socket2::{Domain, Socket, Type};
 
 use crate::db::Client;
-use crate::db::users::User;
+use crate::db::users::{Role, User};
 use crate::threading::ThreadPool;
 
 const PORT: u16 = 7878;
@@ -44,7 +44,7 @@ fn main() {
         let default_admin_password = env::var("ADMIN_PASSWORD")
             .expect("Environment variable ADMIN_PASSWORD is required on first startup");
 
-        User::new(
+        let admin = User::new(
             &mut transaction,
             "admin",
             &default_admin_email,
@@ -54,6 +54,8 @@ fn main() {
                 .as_str(),
         )
         .expect("Could not create admin user.");
+        User::set_role(&mut transaction, admin.id, Role::Admin)
+            .expect("Could not make admin user an admin.");
     }
     transaction.commit().unwrap();
     drop(postgres);

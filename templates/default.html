@@ -11,13 +11,47 @@
     </head>
     <body>
         <main>
-            <content />
+            <div class="sidebar">
+                <h3>articles</h3>
 
-            <img
-                id="tubbie"
-                src="/assets/tubbie.png"
-                alt="me in a teletubbies costume"
-            />
+                <div id="articles"></div>
+            </div>
+
+            <div class="content">
+                <content />
+
+                <img
+                    id="tubbie"
+                    src="/assets/tubbie.png"
+                    alt="me in a teletubbies costume"
+                />
+            </div>
         </main>
+
+        <script type="module">
+            let response = await fetch("/api/articles/get-page?page=0");
+            let articles = response.ok ? await response.json() : [];
+
+            let articles_wrapper = document.getElementById("articles");
+            if (articles_wrapper)
+                for (const article of articles) {
+                    console.log(article);
+                    let card = document.createElement("div");
+                    card.className = "article-card";
+
+                    let link = document.createElement("a");
+                    link.href = "/articles/" + article.slug;
+                    link.textContent = article.title;
+                    card.appendChild(link);
+
+                    if (article.short) {
+                        let short = document.createElement("p");
+                        short.textContent = article.short;
+                        card.appendChild(short);
+                    }
+
+                    articles_wrapper.appendChild(card);
+                }
+        </script>
     </body>
 </html>

@@ -3,11 +3,35 @@ use uuid::Uuid;
 
 use crate::http::error::ResponseError;
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Role {
+    Admin,
+    User,
+}
+
+impl Role {
+    /// Reads `role::text`. Anything unknown gets the least access.
+    fn from_text(text: &str) -> Role {
+        match text {
+            "admin" => Role::Admin,
+            _ => Role::User,
+        }
+    }
+
+    fn as_text(self) -> &'static str {
+        match self {
+            Role::Admin => "admin",
+            Role::User => "user",
+        }
+    }
+}
+
 pub struct User {
     pub id: Uuid,
     pub username: String,
     pub email: String,
     pub display_name: String,
+    pub role: Role,
 }
 
 impl User {
@@ -35,7 +59,21 @@ impl User {
             username: username.to_string(),
             email: email.to_string(),
             display_name: display_name.to_string(),
+            role: Role::User,
         })
+    }
+
+    pub fn set_role(
+        client: &mut impl GenericClient,
+        id: Uuid,
+        role: Role,
+    ) -> Result<(), ResponseError> {
+        client.execute(
+            include_str!("./sql/update_role_where_id.sql"),
+            &[&id, &role.as_text()],
+        )?;
+
+        Ok(())
     }
 
     pub fn count(client: &mut impl GenericClient) -> Result<i64, ResponseError> {
@@ -56,6 +94,7 @@ impl User {
             username: row.get("username"),
             email: row.get("email"),
             display_name: row.get("display_name"),
+            role: Role::from_text(row.get("role")),
         }))
     }
 
@@ -72,6 +111,7 @@ impl User {
                     username: row.get("username"),
                     email: row.get("email"),
                     display_name: row.get("display_name"),
+                    role: Role::from_text(row.get("role")),
                 },
                 row.get("password_hash"),
             )

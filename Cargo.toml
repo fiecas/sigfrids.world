@@ -12,10 +12,12 @@ include_dir = "0.7.4"
 postgres = { version = "0.19.14", features = ["with-uuid-1"] }
 pulldown-cmark = "0.13.4"
 run = "0.7.1"
+serde = "1.0.229"
+serde_json = "1.0.154"
 sha2 = "0.11"
 socket2 = { version = "0.6.5", features = ["all"] }
 subtle = "2.6.1"
-uuid = "1.28.0"
+uuid = { version = "1.28.0", features = ["serde"] }
 
 [profile.dev.package.argon2]
 opt-level = 3

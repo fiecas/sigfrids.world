@@ -5,6 +5,7 @@ use std::{
 
 mod api;
 mod app;
+mod articles;
 
 use include_dir::{Dir, include_dir};
 use postgres::Client;
@@ -15,9 +16,48 @@ use crate::{
         request::Request,
         routing::{Headers, Route},
     },
-    routes::{api::ApiRoute, app::AppRoute},
+    db::{
+        sessions::Session,
+        users::{Role, User},
+    },
+    routes::{api::ApiRoute, app::AppRoute, articles::ArticlesRoute},
     utils::{parse_markdown, with_default_template},
 };
+
+/// The logged-in user. Also puts their session in the request context.
+pub fn current_user(request: &mut Request, db: &Arc<Mutex<Client>>) -> Result<User, ResponseError> {
+    let cookie = request
+        .cookies
+        .get("session")
+        .ok_or(ResponseError::Unauthorized)?;
+
+    let mut client = db.lock().unwrap();
+    let session = Session::from_cookie(&mut client, cookie)?.ok_or(ResponseError::Unauthorized)?;
+    let user = User::get_by_id(&mut client, session.user_id)?.ok_or(ResponseError::Unauthorized)?;
+    drop(client);
+
+    request.context.session = Some(session);
+    Ok(user)
+}
+
+/// `?page=`, counted from 0. Missing means the first page.
+pub fn parse_page(request: &Request) -> Result<u32, ResponseError> {
+    match request.query.get("page") {
+        Some(page) => page
+            .parse()
+            .map_err(|_| ResponseError::BadRequest("Invalid page.")),
+        None => Ok(0),
+    }
+}
+
+/// The logged-in user, if they are an admin.
+pub fn require_admin(request: &mut Request, db: &Arc<Mutex<Client>>) -> Result<User, ResponseError> {
+    let user = current_user(request, db)?;
+    if user.role != Role::Admin {
+        return Err(ResponseError::Forbidden);
+    }
+    Ok(user)
+}
 
 static ASSETS: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/assets");
 
@@ -27,6 +67,7 @@ pub enum RootRoute {
     Health,
     Login,
     Signup,
+    Articles(ArticlesRoute),
     Api(ApiRoute),
     App(AppRoute),
     Assets(String),
@@ -39,6 +80,7 @@ impl Route for RootRoute {
             "/health" => RootRoute::Health,
             "/login" => RootRoute::Login,
             "/signup" => RootRoute::Signup,
+            p if p.starts_with("/articles") => RootRoute::Articles(ArticlesRoute::from_path(p)?),
             p if p.starts_with("/api") => RootRoute::Api(ApiRoute::from_path(p)?),
             p if p.starts_with("/app") => RootRoute::App(AppRoute::from_path(p)?),
             p if p.starts_with("/assets") && path.len() > 8 => {
@@ -71,8 +113,9 @@ impl Route for RootRoute {
                 let content = with_default_template(include_str!("../../content/signup.html"));
                 Ok((200, content.into_bytes(), HashMap::new()))
             }
-            RootRoute::Api(api_route) => api_route.handle(request, db),
-            RootRoute::App(app_route) => app_route.handle(request, db),
+            RootRoute::Articles(route) => route.handle(request, db),
+            RootRoute::Api(route) => route.handle(request, db),
+            RootRoute::App(route) => route.handle(request, db),
             RootRoute::Assets(path) => {
                 let file = ASSETS.get_file(path).ok_or(ResponseError::NotFound)?;
                 let content_type = match file.path().extension().and_then(|e| e.to_str()) {
