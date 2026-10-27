@@ -41,6 +41,7 @@ main > .sidebar {
 
 main > .content {
     outline: 2px black solid;
+    width: 100%;
 }
 
 img#tubbie {
