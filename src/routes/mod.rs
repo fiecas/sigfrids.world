@@ -11,14 +11,14 @@ use include_dir::{Dir, include_dir};
 use postgres::Client;
 
 use crate::{
+    db::{
+        sessions::Session,
+        users::{Role, User},
+    },
     http::{
         error::ResponseError,
         request::Request,
         routing::{Headers, Route},
-    },
-    db::{
-        sessions::Session,
-        users::{Role, User},
     },
     routes::{api::ApiRoute, app::AppRoute, articles::ArticlesRoute},
     utils::{parse_markdown, with_default_template},
@@ -51,7 +51,10 @@ pub fn parse_page(request: &Request) -> Result<u32, ResponseError> {
 }
 
 /// The logged-in user, if they are an admin.
-pub fn require_admin(request: &mut Request, db: &Arc<Mutex<Client>>) -> Result<User, ResponseError> {
+pub fn require_admin(
+    request: &mut Request,
+    db: &Arc<Mutex<Client>>,
+) -> Result<User, ResponseError> {
     let user = current_user(request, db)?;
     if user.role != Role::Admin {
         return Err(ResponseError::Forbidden);
@@ -97,7 +100,7 @@ impl Route for RootRoute {
     ) -> Result<(u16, Vec<u8>, Headers), ResponseError> {
         match self {
             RootRoute::Root => {
-                let content = parse_markdown(include_str!("../../content/home.md"));
+                let content = with_default_template(include_str!("../../content/home.html"));
                 Ok((200, content.into_bytes(), HashMap::new()))
             }
             RootRoute::Health => {
