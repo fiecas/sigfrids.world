@@ -40,6 +40,9 @@ main > .sidebar {
 }
 
 main > .content {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
     outline: 2px black solid;
     width: 100%;
 }
