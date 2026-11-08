@@ -1,4 +1,4 @@
-use postgres::{Client, GenericClient};
+use postgres::Client;
 use uuid::Uuid;
 
 use crate::http::error::ResponseError;
@@ -17,13 +17,6 @@ impl Role {
             _ => Role::User,
         }
     }
-
-    fn as_text(self) -> &'static str {
-        match self {
-            Role::Admin => "admin",
-            Role::User => "user",
-        }
-    }
 }
 
 pub struct User {
@@ -35,54 +28,6 @@ pub struct User {
 }
 
 impl User {
-    pub fn new(
-        client: &mut impl GenericClient,
-        username: &str,
-        email: &str,
-        display_name: &str,
-        password_hash: &str,
-    ) -> Result<User, ResponseError> {
-        let row = client
-            .query_one(
-                include_str!("./sql/insert_returning_id.sql"),
-                &[&username, &email, &display_name, &password_hash],
-            )
-            .map_err(|e| match e.code() {
-                Some(&postgres::error::SqlState::UNIQUE_VIOLATION) => ResponseError::Conflict,
-                _ => ResponseError::from(e),
-            })?;
-
-        let id = row.get("id");
-
-        Ok(User {
-            id,
-            username: username.to_string(),
-            email: email.to_string(),
-            display_name: display_name.to_string(),
-            role: Role::User,
-        })
-    }
-
-    pub fn set_role(
-        client: &mut impl GenericClient,
-        id: Uuid,
-        role: Role,
-    ) -> Result<(), ResponseError> {
-        client.execute(
-            include_str!("./sql/update_role_where_id.sql"),
-            &[&id, &role.as_text()],
-        )?;
-
-        Ok(())
-    }
-
-    pub fn count(client: &mut impl GenericClient) -> Result<i64, ResponseError> {
-        let row = client.query_one(include_str!("./sql/count_all.sql"), &[])?;
-        let count: i64 = row.get(0);
-
-        Ok(count)
-    }
-
     pub fn get_by_id(client: &mut Client, id: Uuid) -> Result<Option<User>, ResponseError> {
         let row = client.query_opt(
             include_str!("./sql/select_all_wo_pass_where_id.sql"),
@@ -96,34 +41,5 @@ impl User {
             display_name: row.get("display_name"),
             role: Role::from_text(row.get("role")),
         }))
-    }
-
-    pub fn get_by_login(
-        client: &mut Client,
-        login: &str,
-    ) -> Result<Option<(User, String)>, ResponseError> {
-        let row = client.query_opt(include_str!("./sql/select_all_where_login.sql"), &[&login])?;
-
-        Ok(row.map(|row| {
-            (
-                User {
-                    id: row.get("id"),
-                    username: row.get("username"),
-                    email: row.get("email"),
-                    display_name: row.get("display_name"),
-                    role: Role::from_text(row.get("role")),
-                },
-                row.get("password_hash"),
-            )
-        }))
-    }
-
-    pub fn exists(client: &mut Client, email: &str, username: &str) -> Result<bool, ResponseError> {
-        let rows = client.query(
-            include_str!("./sql/select_id_where_username_or_email.sql"),
-            &[&email, &username],
-        )?;
-
-        Ok(rows.len() > 0)
     }
 }

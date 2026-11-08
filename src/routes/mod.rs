@@ -68,8 +68,6 @@ static ASSETS: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/assets");
 pub enum RootRoute {
     Root,
     Health,
-    Login,
-    Signup,
     Articles(ArticlesRoute),
     Api(ApiRoute),
     App(AppRoute),
@@ -81,8 +79,6 @@ impl Route for RootRoute {
         Ok(match path {
             "/" => RootRoute::Root,
             "/health" => RootRoute::Health,
-            "/login" => RootRoute::Login,
-            "/signup" => RootRoute::Signup,
             p if p.starts_with("/articles") => RootRoute::Articles(ArticlesRoute::from_path(p)?),
             p if p.starts_with("/api") => RootRoute::Api(ApiRoute::from_path(p)?),
             p if p.starts_with("/app") => RootRoute::App(AppRoute::from_path(p)?),
@@ -107,14 +103,6 @@ impl Route for RootRoute {
                 let mut db = db.lock().map_err(|_| ResponseError::InternalServerError)?;
                 db.simple_query("SELECT 1")?;
                 Ok((200, b"OK".to_vec(), HashMap::new()))
-            }
-            RootRoute::Login => {
-                let content = with_default_template(include_str!("../../content/login.html"));
-                Ok((200, content.into_bytes(), HashMap::new()))
-            }
-            RootRoute::Signup => {
-                let content = with_default_template(include_str!("../../content/signup.html"));
-                Ok((200, content.into_bytes(), HashMap::new()))
             }
             RootRoute::Articles(route) => route.handle(request, db),
             RootRoute::Api(route) => route.handle(request, db),

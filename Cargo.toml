@@ -4,7 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-argon2 = "0.6.0"
 ctrlc = { version = "3.5.2", features = ["termination"] }
 form_urlencoded = "1.2.2"
 getrandom = "0.4"
@@ -18,6 +17,3 @@ sha2 = "0.11"
 socket2 = { version = "0.6.5", features = ["all"] }
 subtle = "2.6.1"
 uuid = { version = "1.28.0", features = ["serde"] }
-
-[profile.dev.package.argon2]
-opt-level = 3

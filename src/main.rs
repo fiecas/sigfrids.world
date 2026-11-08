@@ -1,7 +1,6 @@
 mod constants;
 mod db;
 mod http;
-mod passwords;
 mod routes;
 mod threading;
 mod utils;
@@ -19,7 +18,6 @@ use std::time::Duration;
 use socket2::{Domain, Socket, Type};
 
 use crate::db::Client;
-use crate::db::users::{Role, User};
 use crate::threading::ThreadPool;
 
 const PORT: u16 = 7878;
@@ -34,31 +32,6 @@ fn main() {
     let mut client = Client::connect(&db_url);
     client.migrate();
     let db = Arc::new(Mutex::new(client.postgres));
-
-    let mut postgres = db.lock().unwrap();
-    let mut transaction = postgres.transaction().unwrap();
-
-    if User::count(&mut transaction).expect("Could not count users.") == 0 {
-        let default_admin_email = env::var("ADMIN_EMAIL")
-            .expect("Environment variable ADMIN_EMAIL is required on first startup");
-        let default_admin_password = env::var("ADMIN_PASSWORD")
-            .expect("Environment variable ADMIN_PASSWORD is required on first startup");
-
-        let admin = User::new(
-            &mut transaction,
-            "admin",
-            &default_admin_email,
-            "Admin",
-            passwords::hash(&default_admin_password)
-                .expect("Could not hash admin password.")
-                .as_str(),
-        )
-        .expect("Could not create admin user.");
-        User::set_role(&mut transaction, admin.id, Role::Admin)
-            .expect("Could not make admin user an admin.");
-    }
-    transaction.commit().unwrap();
-    drop(postgres);
 
     let running = Arc::new(AtomicBool::new(true));
     let flag = running.clone();

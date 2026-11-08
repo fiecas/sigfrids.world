@@ -2,22 +2,6 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use pulldown_cmark::{Parser, html};
 
-pub fn valid_email(email: &str) -> bool {
-    email.len() <= 254
-        && !email.chars().any(char::is_whitespace)
-        && match email.split_once('@') {
-            Some((local, domain)) => !local.is_empty() && domain.contains('.'),
-            None => false,
-        }
-}
-
-pub fn valid_username(username: &str) -> bool {
-    (3..=32).contains(&username.len())
-        && username
-            .chars()
-            .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
-}
-
 pub fn with_default_template(content: &str) -> String {
     let template = include_str!("../templates/default.html");
     template.replace("<content />", &content)
