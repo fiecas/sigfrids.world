@@ -1,3 +1,4 @@
+mod auth_client;
 mod constants;
 mod db;
 mod http;
@@ -28,6 +29,8 @@ fn main() {
     }
 
     let db_url = env::var("DATABASE_URL").expect("Environment variable DATABASE_URL is required");
+
+    auth_client::check_config();
 
     let mut client = Client::connect(&db_url);
     client.migrate();

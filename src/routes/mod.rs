@@ -6,11 +6,13 @@ use std::{
 mod api;
 mod app;
 mod articles;
+mod auth_callback;
 
 use include_dir::{Dir, include_dir};
 use postgres::Client;
 
 use crate::{
+    auth_client,
     db::{
         sessions::Session,
         users::{Role, User},
@@ -68,6 +70,9 @@ static ASSETS: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/assets");
 pub enum RootRoute {
     Root,
     Health,
+    Login,
+    Signup,
+    AuthCallback,
     Articles(ArticlesRoute),
     Api(ApiRoute),
     App(AppRoute),
@@ -79,6 +84,9 @@ impl Route for RootRoute {
         Ok(match path {
             "/" => RootRoute::Root,
             "/health" => RootRoute::Health,
+            "/login" => RootRoute::Login,
+            "/signup" => RootRoute::Signup,
+            "/auth/callback" => RootRoute::AuthCallback,
             p if p.starts_with("/articles") => RootRoute::Articles(ArticlesRoute::from_path(p)?),
             p if p.starts_with("/api") => RootRoute::Api(ApiRoute::from_path(p)?),
             p if p.starts_with("/app") => RootRoute::App(AppRoute::from_path(p)?),
@@ -104,6 +112,10 @@ impl Route for RootRoute {
                 db.simple_query("SELECT 1")?;
                 Ok((200, b"OK".to_vec(), HashMap::new()))
             }
+            // Credentials live on auth.fiecas.com; we only send people there.
+            RootRoute::Login => Ok(auth_client::redirect_to_auth("login")),
+            RootRoute::Signup => Ok(auth_client::redirect_to_auth("signup")),
+            RootRoute::AuthCallback => auth_callback::handle(request, db),
             RootRoute::Articles(route) => route.handle(request, db),
             RootRoute::Api(route) => route.handle(request, db),
             RootRoute::App(route) => route.handle(request, db),
